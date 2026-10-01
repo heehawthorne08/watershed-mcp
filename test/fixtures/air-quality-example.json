@@ -1,0 +1,38 @@
+[
+  {
+    "schema_version": "1.0.0",
+    "sensor_id": "lagos-air-009",
+    "sensor_type": "air_quality",
+    "parameter": "pm2_5",
+    "value": 42.1,
+    "unit": "ug/m3",
+    "timestamp": "2026-09-16T09:00:00Z",
+    "location": { "lat": 6.5244, "lng": 3.3792 },
+    "source": "owockibot bioregional pilot — Lagos Island",
+    "quality_flag": "raw"
+  },
+  {
+    "schema_version": "1.0.0",
+    "sensor_id": "lagos-air-009",
+    "sensor_type": "air_quality",
+    "parameter": "co2",
+    "value": 468,
+    "unit": "ppm",
+    "timestamp": "2026-09-16T09:00:00Z",
+    "location": { "lat": 6.5244, "lng": 3.3792 },
+    "source": "owockibot bioregional pilot — Lagos Island",
+    "quality_flag": "raw"
+  },
+  {
+    "schema_version": "1.0.0",
+    "sensor_id": "co-front-range-air-005",
+    "sensor_type": "air_quality",
+    "parameter": "ozone",
+    "value": 58,
+    "unit": "ppb",
+    "timestamp": "2026-08-30T15:00:00Z",
+    "location": { "lat": 39.7392, "lng": -104.9903, "elevation_m": 1609 },
+    "source": "EPA AirNow API",
+    "quality_flag": "validated"
+  }
+]

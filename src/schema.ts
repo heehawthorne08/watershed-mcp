@@ -1,79 +1,66 @@
-// ============================================================================
-// SCHEMA LAYER. The "#450 JSON schema" was NOT supplied when this was written.
-// Everything below is a placeholder envelope. To conform to the real #450 spec,
-// edit ONLY this file; tools/sources don't change.
-// ============================================================================
-import { z } from "zod";
+// Conformance layer for the #450 "Ecological Sensor Reading" JSON Schema
+// (https://github.com/xtratrezzy/ecological-sensor-schema, schema_version 1.0.0).
+// Every reading we emit is validated against the real schema at runtime;
+// anything that fails is dropped and reported in `warnings`.
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
+import readingSchema from "./readingSchema.js";
 
-export const SCHEMA_VERSION = "450-assumed-v0";
+export const SCHEMA_VERSION = "1.0.0";
+export const SCHEMA_REF = "https://github.com/xtratrezzy/ecological-sensor-schema";
 
-export const SourceRef = z.object({ name: z.string(), url: z.string() });
+export interface Reading {
+  schema_version: "1.0.0";
+  sensor_id: string;
+  sensor_type: "water_quality" | "soil" | "air_quality";
+  parameter: string;
+  value: number;
+  unit: string;
+  timestamp: string;
+  location: { lat: number; lng: number; elevation_m?: number };
+  source: string;
+  quality_flag?: "raw" | "validated" | "estimated" | "suspect";
+  notes?: string;
+}
 
-export const Envelope = <T extends z.ZodTypeAny>(item: T) =>
-  z.object({
-    schema_version: z.literal(SCHEMA_VERSION),
-    tool: z.string(),
-    generated_at: z.string(),
-    sources: z.array(SourceRef),
-    query: z.record(z.unknown()),
-    count: z.number().int(),
-    results: z.array(item),
-    warnings: z.array(z.string()),
-  });
+const AjvCtor: any = (Ajv2020 as any).default ?? Ajv2020;
+const addFmt: any = (addFormats as any).default ?? addFormats;
+const ajv = new AjvCtor({ strict: false, allErrors: true });
+addFmt(ajv);
+const validate = ajv.compile(readingSchema);
 
-export const River = z.object({
-  site_id: z.string(),
-  name: z.string(),
-  latitude: z.number().nullable(),
-  longitude: z.number().nullable(),
-  latest: z.object({
-    discharge_cfs: z.number().nullable(),
-    gauge_height_ft: z.number().nullable(),
-    observed_at: z.string().nullable(),
-  }),
-});
+export function checkReading(r: unknown): { ok: true } | { ok: false; error: string } {
+  if (validate(r)) return { ok: true };
+  return { ok: false, error: (validate.errors ?? []).map((e: any) => `${e.instancePath || "/"} ${e.message}`).join("; ") };
+}
 
-export const GaugeReading = z.object({
-  site_id: z.string(),
-  name: z.string(),
-  parameter_code: z.string(),
-  parameter: z.string(),
-  unit: z.string(),
-  value: z.number().nullable(),
-  observed_at: z.string(),
-  qualifiers: z.array(z.string()),
-});
+/** Keep only schema-valid readings; report the rest. */
+export function keepValid(candidates: Reading[]): { readings: Reading[]; warnings: string[] } {
+  const readings: Reading[] = [];
+  const warnings: string[] = [];
+  for (const c of candidates) {
+    const res = checkReading(c);
+    if (res.ok) readings.push(c);
+    else warnings.push(`Dropped non-conforming reading ${c.sensor_id}/${c.parameter}: ${res.error}`);
+  }
+  return { readings, warnings };
+}
 
-export const ComplianceRank = z.object({
-  rank: z.number().int(), // 1 = worst compliance
-  facility_id: z.string(),
-  name: z.string(),
-  city: z.string().nullable(),
-  state: z.string().nullable(),
-  permit_status: z.string().nullable(),
-  snc_status: z.string().nullable(),
-  quarters_with_nc: z.number().nullable(),
-  formal_actions: z.number().nullable(),
-  penalties_usd: z.number().nullable(),
-  compliance_score: z.number(), // 0-100, higher = better
-});
-
-export function toEnvelope<T>(
+export function envelope<T extends Record<string, unknown>>(
   tool: string,
   query: Record<string, unknown>,
   sources: { name: string; url: string }[],
-  results: T[],
+  body: T,
   warnings: string[] = [],
   now: () => Date = () => new Date(),
 ) {
   return {
-    schema_version: SCHEMA_VERSION as typeof SCHEMA_VERSION,
     tool,
     generated_at: now().toISOString(),
-    sources,
+    schema: { name: "ecological-sensor-reading", version: SCHEMA_VERSION, ref: SCHEMA_REF },
     query,
-    count: results.length,
-    results,
+    sources,
+    ...body,
     warnings,
   };
 }

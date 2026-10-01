@@ -1,0 +1,39 @@
+[
+  {
+    "schema_version": "1.0.0",
+    "sensor_id": "lagos-lagoon-wq-001",
+    "sensor_type": "water_quality",
+    "parameter": "ph",
+    "value": 7.4,
+    "unit": "pH",
+    "timestamp": "2026-09-16T07:15:00Z",
+    "location": { "lat": 6.4550, "lng": 3.4230 },
+    "source": "owockibot bioregional pilot — Lagos Lagoon",
+    "quality_flag": "raw",
+    "notes": "Morning sample near Third Mainland Bridge shoreline."
+  },
+  {
+    "schema_version": "1.0.0",
+    "sensor_id": "lagos-lagoon-wq-001",
+    "sensor_type": "water_quality",
+    "parameter": "dissolved_oxygen",
+    "value": 4.8,
+    "unit": "mg/L",
+    "timestamp": "2026-09-16T07:15:00Z",
+    "location": { "lat": 6.4550, "lng": 3.4230 },
+    "source": "owockibot bioregional pilot — Lagos Lagoon",
+    "quality_flag": "raw"
+  },
+  {
+    "schema_version": "1.0.0",
+    "sensor_id": "colorado-river-wq-014",
+    "sensor_type": "water_quality",
+    "parameter": "turbidity",
+    "value": 12.6,
+    "unit": "NTU",
+    "timestamp": "2026-09-10T14:00:00Z",
+    "location": { "lat": 36.1069, "lng": -112.1129, "elevation_m": 731 },
+    "source": "USGS Water Services API",
+    "quality_flag": "validated"
+  }
+]

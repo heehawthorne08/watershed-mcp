@@ -1,0 +1,39 @@
+[
+  {
+    "schema_version": "1.0.0",
+    "sensor_id": "lagos-mangrove-soil-003",
+    "sensor_type": "soil",
+    "parameter": "moisture",
+    "value": 68.2,
+    "unit": "percent",
+    "timestamp": "2026-09-16T08:00:00Z",
+    "location": { "lat": 6.4400, "lng": 3.3900 },
+    "source": "owockibot bioregional pilot — Lagos Lagoon mangrove edge",
+    "quality_flag": "raw"
+  },
+  {
+    "schema_version": "1.0.0",
+    "sensor_id": "lagos-mangrove-soil-003",
+    "sensor_type": "soil",
+    "parameter": "organic_matter",
+    "value": 9.4,
+    "unit": "percent",
+    "timestamp": "2026-09-16T08:00:00Z",
+    "location": { "lat": 6.4400, "lng": 3.3900 },
+    "source": "owockibot bioregional pilot — Lagos Lagoon mangrove edge",
+    "quality_flag": "raw"
+  },
+  {
+    "schema_version": "1.0.0",
+    "sensor_id": "co-front-range-soil-021",
+    "sensor_type": "soil",
+    "parameter": "nitrogen",
+    "value": 184.5,
+    "unit": "mg/kg",
+    "timestamp": "2026-08-30T12:00:00Z",
+    "location": { "lat": 39.7392, "lng": -104.9903, "elevation_m": 1609 },
+    "source": "community volunteer network — Colorado Front Range",
+    "quality_flag": "estimated",
+    "notes": "Estimated from nearby lab samples; direct sensor reading pending calibration."
+  }
+]

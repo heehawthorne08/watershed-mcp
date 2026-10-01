@@ -4,8 +4,13 @@
   "description": "MCP server exposing live watershed data: river queries, gauge readings, EPA compliance rankings",
   "type": "module",
   "main": "dist/index.js",
-  "bin": { "watershed-mcp": "dist/index.js" },
-  "files": ["dist", "README.md"],
+  "bin": {
+    "watershed-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
@@ -15,6 +20,8 @@
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {

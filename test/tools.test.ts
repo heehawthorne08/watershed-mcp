@@ -1,38 +1,61 @@
 import { describe, expect, it } from "vitest";
-import { Envelope, GaugeReading, River, ComplianceRank } from "../src/schema.js";
+import { readFileSync } from "node:fs";
+import { checkReading } from "../src/schema.js";
 import { getGaugeReadings, queryRivers, rankEpaCompliance } from "../src/tools.js";
 
-const ts = (site: string, name: string, code: string, v: string) => ({
+const ts = (site: string, name: string, code: string, v: string, q = ["P"]) => ({
   sourceInfo: { siteName: name, siteCode: [{ value: site }], geoLocation: { geogLocation: { latitude: 38.9, longitude: -77.1 } } },
-  variable: { variableCode: [{ value: code }], variableName: code === "00060" ? "Streamflow" : "Gage height", unit: { unitCode: code === "00060" ? "ft3/s" : "ft" }, noDataValue: -999999 },
-  values: [{ value: [{ value: v, dateTime: "2026-10-01T12:00:00.000-04:00", qualifiers: ["P"] }] }],
+  variable: { variableCode: [{ value: code }], variableName: code, unit: { unitCode: "u" }, noDataValue: -999999 },
+  values: [{ value: [{ value: v, dateTime: "2026-10-01T12:00:00.000-04:00", qualifiers: q }] }],
 });
-const usgsBody = { value: { timeSeries: [
-  ts("01646500", "POTOMAC RIVER NEAR WASH, DC LITTLE FALLS PUMP STA", "00060", "4200"),
-  ts("01646500", "POTOMAC RIVER NEAR WASH, DC LITTLE FALLS PUMP STA", "00065", "-999999"),
-  ts("01578310", "SUSQUEHANNA RIVER AT CONOWINGO, MD", "00060", "30000"),
-] } };
+const body = (...t: any[]) => ({ value: { timeSeries: t } });
 const json = (b: unknown, ok = true, status = 200) => ({ ok, status, json: async () => b }) as Response;
+const mk = (b: unknown) => (async () => json(b)) as typeof fetch;
+
+describe("real #450 schema sanity", () => {
+  it("accepts the repo's own examples", () => {
+    for (const f of ["water-quality", "soil", "air-quality"]) {
+      for (const r of JSON.parse(readFileSync(`test/fixtures/${f}-example.json`, "utf8"))) expect(checkReading(r)).toEqual({ ok: true });
+    }
+  });
+  it("rejects wrong unit", () => {
+    const r = JSON.parse(readFileSync("test/fixtures/water-quality-example.json", "utf8"))[0];
+    expect(checkReading({ ...r, unit: "mg/L" }).ok).toBe(false);
+  });
+});
 
 describe("tools", () => {
-  it("query_rivers merges params, filters by name, validates envelope", async () => {
-    const f = (async () => json(usgsBody)) as typeof fetch;
-    const out = await queryRivers({ state: "MD", name_contains: "potomac", limit: 25 }, f);
-    expect(() => Envelope(River).parse(out)).not.toThrow();
+  const POTOMAC = "POTOMAC RIVER NEAR WASH, DC";
+  const data = body(
+    ts("01646500", POTOMAC, "00010", "18.2", ["A"]),
+    ts("01646500", POTOMAC, "00300", "8.1"),
+    ts("01646500", POTOMAC, "00400", "7.6", ["P", "e"]),
+    ts("01646500", POTOMAC, "00060", "4200"),
+    ts("01646500", POTOMAC, "00065", "-999999"),
+    ts("01578310", "SUSQUEHANNA RIVER AT CONOWINGO, MD", "00010", "99"), // out of schema range -> dropped
+  );
+  it("get_gauge_readings emits only schema-valid readings; discharge goes to supplemental", async () => {
+    const out = await getGaugeReadings({ site_ids: ["01646500", "01578310", "99999999"], parameters: ["00010", "00300", "00400", "00060"], max_points_per_series: 5 }, mk(data));
+    expect(out.readings).toHaveLength(3);
+    for (const r of out.readings) expect(checkReading(r)).toEqual({ ok: true });
+    expect(out.readings.map((r) => r.quality_flag).sort()).toEqual(["estimated", "raw", "validated"]);
+    expect(out.readings[0].timestamp).toBe("2026-10-01T16:00:00.000Z");
+    expect(out.supplemental.find((s) => s.parameter_code === "00060")?.value).toBe(4200);
+    const w = out.warnings.join("|");
+    expect(w).toMatch(/Dropped non-conforming.*01578310/);
+    expect(w).toMatch(/No data returned for site 99999999/);
+  });
+  it("query_rivers filters by name and returns valid readings", async () => {
+    const out = await queryRivers({ state: "VA", name_contains: "potomac", limit: 25 }, mk(data));
     expect(out.count).toBe(1);
-    expect(out.results[0].latest.discharge_cfs).toBe(4200);
-    expect(out.results[0].latest.gauge_height_ft).toBeNull();
+    expect(out.sites[0]).toMatchObject({ site_id: "USGS-01646500", location: { lat: 38.9, lng: -77.1 } });
+    expect(out.readings).toHaveLength(3);
+    expect(out.supplemental).toHaveLength(2); // discharge + gauge height (noData -> null)
   });
   it("query_rivers requires a geographic filter", async () => {
     await expect(queryRivers({ limit: 5 } as any)).rejects.toThrow(/at least one/);
   });
-  it("get_gauge_readings warns on missing sites", async () => {
-    const f = (async () => json(usgsBody)) as typeof fetch;
-    const out = await getGaugeReadings({ site_ids: ["01646500", "99999999"], parameters: ["00060"], max_points_per_series: 10 }, f);
-    expect(() => Envelope(GaugeReading).parse(out)).not.toThrow();
-    expect(out.warnings.join()).toMatch(/99999999/);
-  });
-  it("rank_epa_compliance ranks worst first", async () => {
+  it("rank_epa_compliance ranks worst first and declares non-conformance", async () => {
     let n = 0;
     const f = (async () => {
       n++;
@@ -44,13 +67,10 @@ describe("tools", () => {
       return json({ Results: { Facilities: [] } });
     }) as typeof fetch;
     const out = await rankEpaCompliance({ state: "VA", min_quarters_in_violation: 1, limit: 10, max_pages: 3 }, f);
-    expect(() => Envelope(ComplianceRank).parse(out)).not.toThrow();
-    expect(out.results[0].facility_id).toBe("B2");
-    expect(out.results[0].penalties_usd).toBe(12000);
-    expect(out.results[0].rank).toBe(1);
+    expect(out.ranking[0]).toMatchObject({ facility_id: "B2", rank: 1, penalties_usd: 12000 });
+    expect(out.schema_conformance).toMatch(/not-applicable/);
   });
   it("surfaces upstream HTTP errors", async () => {
-    const f = (async () => json({}, false, 503)) as typeof fetch;
-    await expect(queryRivers({ state: "VA", limit: 5 }, f)).rejects.toThrow(/503/);
+    await expect(queryRivers({ state: "VA", limit: 5 }, (async () => json({}, false, 503)) as typeof fetch)).rejects.toThrow(/503/);
   });
 });
