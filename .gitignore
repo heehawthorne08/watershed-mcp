@@ -1,0 +1,6 @@
+node_modules
+dist
+build
+wallet*.json
+*.key
+.env

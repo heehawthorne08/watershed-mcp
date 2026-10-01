@@ -1,0 +1,26 @@
+{
+  "name": "watershed-mcp",
+  "version": "0.1.0",
+  "description": "MCP server exposing live watershed data: river queries, gauge readings, EPA compliance rankings",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": { "watershed-mcp": "dist/index.js" },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "start": "node dist/index.js",
+    "bundle": "node scripts/arweave-prep.mjs"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}
